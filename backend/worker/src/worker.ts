@@ -1,10 +1,27 @@
+import { Worker } from "bullmq";
 import { encodeVideo } from "./encoder";
-async function main() {
-    await encodeVideo(
-        "storage/uploads/VID_20260813_130330958.mp4",
-        "storage/outputs/output-720p.mp4",
-        720
-    );
-}
+import { redis } from "../../api/src/redis";
 
-main().catch(console.error);
+
+const worker = new Worker("encode-video", async (job) => {
+    console.log(`Processing job ${job.id}`);
+
+    const { inputPath, outputPath, height } = job.data;
+
+    await encodeVideo(inputPath, outputPath, height);
+
+},
+    {
+        connection: redis
+    }
+)
+
+worker.on("completed", (job) => {
+    console.log(`job ${job.id} completed`)
+})
+
+worker.on("failed", (job, error) => {
+    console.log(`job ${job?.id} failed`, error.message)
+})
+
+console.log(" Video encoding worker started");
