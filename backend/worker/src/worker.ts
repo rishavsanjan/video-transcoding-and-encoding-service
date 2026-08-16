@@ -3,6 +3,8 @@ import { encodeVideo } from "./encoder";
 import { redis } from "../../api/src/redis";
 
 
+
+
 const worker = new Worker("encode-video", async (job) => {
     console.log(`Processing job ${job.id}`);
 
@@ -12,7 +14,8 @@ const worker = new Worker("encode-video", async (job) => {
 
 },
     {
-        connection: redis
+        connection: redis,
+        concurrency:2
     }
 )
 

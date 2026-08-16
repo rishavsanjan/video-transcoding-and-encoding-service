@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Video {
+  id           String        @id @default(uuid())
+  originalName String
+  originalPath String
+  status       VideoStatus   @default(UPLOADED)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  encodingJobs EncodingJob[]
+}
+
+model EncodingJob {
+  id         String         @id @default(uuid())
+  videoId    String
+  resolution Int
+  status     EncodingStatus @default(QUEUED)
+  outputPath String?
+  error      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+enum VideoStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum EncodingStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
