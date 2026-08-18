@@ -3,7 +3,9 @@ import { spawn } from "child_process";
 export function encodeVideo(
     inputPath: string,
     outputPath: string,
-    height: number
+    height: number,
+    duration: number,
+    onProgress: (progress: number) => void
 ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         const ffmpeg = spawn("ffmpeg", [
@@ -15,11 +17,46 @@ export function encodeVideo(
             "libx264",
             "-c:a",
             "aac",
-            outputPath,
-        ])
 
-        ffmpeg.stderr.on("data", (data) => {
-            console.log(data.toString());
+            "-progress",
+            "pipe:1",
+            "-nostats",
+
+            outputPath,
+        ]);
+
+
+        let progressData = "";
+
+        ffmpeg.stdout.on("data", (data) => {
+            progressData += data.toString();
+
+            const lines = progressData.split("\n");
+
+            progressData = lines.pop() || "";
+
+            for (const line of lines) {
+                if (!line.startsWith("out_time_ms=")) {
+                    continue;
+                }
+
+                const value = Number(
+                    line.replace("out_time_ms=", "")
+                );
+
+                if (!Number.isFinite(value)) {
+                    continue;
+                }
+
+                const currentTime = value / 1_000_000;
+
+                const progress = Math.min(
+                    100,
+                    Math.round((currentTime / duration) * 100)
+                );
+
+                onProgress(progress);
+            }
         });
 
         ffmpeg.on("close", (code) => {
