@@ -19,7 +19,8 @@
     "multer": "^2.2.0",
     "pg": "^8.23.0",
     "prisma": "^7.9.1",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -3,6 +3,7 @@ import { encodeVideo } from "./encoder";
 import { redis } from "../../api/src/redis";
 import prisma from "../../api/src/prisma";
 import { getVideoDuration } from "./helper";
+import { redisPublisher } from "./redisPublisher";
 
 
 
@@ -34,23 +35,32 @@ const worker = new Worker("encode-video", async (job) => {
     })
 
     try {
+
         let lastProgress = -1;
 
         const onProgress = async (progress: number) => {
-            if (progress === lastProgress) {
+            if (progress <= lastProgress) {
                 return;
             }
 
             lastProgress = progress;
 
-            await prisma.encodingJob.update({
-                where: {
-                    id: encodingJobId,
-                },
-                data: {
-                    progress,
-                },
-            });
+            try {
+                await redisPublisher.publish(
+                    `video:${videoId}:progress`,
+                    JSON.stringify({
+                        videoId,
+                        resolution: height,
+                        progress,
+                        status: "PROCESSING",
+                    })
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to publish progress:",
+                    error
+                );
+            }
         };
         const duration = await getVideoDuration(inputPath);
         await encodeVideo(inputPath, outputPath, height, duration, onProgress);
@@ -60,7 +70,8 @@ const worker = new Worker("encode-video", async (job) => {
                 id: encodingJobId
             },
             data: {
-                status: 'COMPLETED'
+                status: 'COMPLETED',
+                progress: 100
             }
         })
 
@@ -107,7 +118,18 @@ worker.on("completed", (job) => {
 worker.on("failed", async (job, error) => {
     if (!job) return;
 
-    console.error(`Job ${job.id} permanently failed:`, error.message);
+    console.error(
+        `Job ${job.id} failed:`,
+        error.message
+    );
+
+    if (job.attemptsMade < (job.opts.attempts ?? 1)) {
+        return;
+    }
+
+    console.error(
+        `Job ${job.id} permanently failed`
+    );
 
     const { encodingJobId, videoId } = job.data;
 

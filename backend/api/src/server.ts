@@ -1,5 +1,7 @@
 import express from "express";
 import videoRoutes from "./routes/video.route"
+import { createServer } from "http";
+import { setupSocket } from "./socket";
 
 const app = express();
 
@@ -9,6 +11,9 @@ app.use("/api", videoRoutes);
 
 const PORT = 5000;
 
-app.listen(PORT, () => {
+const server = createServer(app);
+setupSocket(server)
+
+server.listen(PORT, () => {
   console.log(`running on port :${PORT}`);
 }); 
