@@ -10,6 +10,116 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Colors */
+  --color-on-error-container: #ffdad6;
+  --color-on-primary: #002e6a;
+  --color-on-error: #690005;
+  --color-on-tertiary: #003824;
+  --color-surface-tint: #adc6ff;
+  --color-on-secondary-fixed: #0d1c2d;
+  --color-tertiary-fixed: #6ffbbe;
+  --color-tertiary-fixed-dim: #4edea3;
+  --color-surface-dim: #0b1326;
+  --color-primary-container: #4d8eff;
+  --color-surface: #0b1326;
+  --color-primary: #adc6ff;
+  --color-error-container: #93000a;
+  --color-on-primary-container: #00285d;
+  --color-surface-container-lowest: #060e20;
+  --color-on-tertiary-fixed: #002113;
+  --color-on-background: #dae2fd;
+  --color-on-tertiary-fixed-variant: #005236;
+  --color-surface-container-low: #131b2e;
+  --color-on-primary-fixed: #001a42;
+  --color-outline: #8c909f;
+  --color-surface-container-highest: #2d3449;
+  --color-error: #ffb4ab;
+  --color-inverse-surface: #dae2fd;
+  --color-secondary-container: #39485a;
+  --color-on-secondary: #233143;
+  --color-on-tertiary-container: #00311f;
+  --color-on-surface-variant: #c2c6d6;
+  --color-surface-variant: #2d3449;
+  --color-secondary-fixed-dim: #b9c8de;
+  --color-primary-fixed-dim: #adc6ff;
+  --color-on-secondary-fixed-variant: #39485a;
+  --color-surface-container: #171f33;
+  --color-surface-bright: #31394d;
+  --color-tertiary-container: #00a572;
+  --color-surface-container-high: #222a3d;
+  --color-outline-variant: #424754;
+  --color-secondary: #b9c8de;
+  --color-tertiary: #4edea3;
+  --color-primary-fixed: #d8e2ff;
+  --color-inverse-on-surface: #283044;
+  --color-on-secondary-container: #a7b6cc;
+  --color-inverse-primary: #005ac2;
+  --color-secondary-fixed: #d4e4fa;
+  --color-on-surface: #dae2fd;
+  --color-background: #0b1326;
+  --color-on-primary-fixed-variant: #004395;
+
+  /* Border radius */
+  --radius-DEFAULT: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
+
+  /* Spacing */
+  --spacing-layout-gutter: 16px;
+  --spacing-space-sm: 8px;
+  --spacing-space-lg: 24px;
+  --spacing-space-md: 16px;
+  --spacing-layout-margin: 24px;
+  --spacing-space-xs: 4px;
+  --spacing-space-xl: 32px;
+
+  /* Fonts */
+  --font-headline-lg: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-headline-sm: "Inter", sans-serif;
+  --font-data-tabular: "JetBrains Mono", monospace;
+  --font-body-lg: "Inter", sans-serif;
+  --font-label-caps: "Inter", sans-serif;
+  --font-code-md: "JetBrains Mono", monospace;
+  --font-headline-md: "Inter", sans-serif;
+
+  /* Font sizes: [size, { lineHeight, letterSpacing, fontWeight }] */
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 40px;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 600;
+
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 28px;
+  --text-headline-sm--font-weight: 500;
+
+  --text-data-tabular: 13px;
+  --text-data-tabular--line-height: 18px;
+  --text-data-tabular--font-weight: 500;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.05em;
+  --text-label-caps--font-weight: 700;
+
+  --text-code-md: 14px;
+  --text-code-md--line-height: 20px;
+  --text-code-md--font-weight: 400;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
 }
 
 @media (prefers-color-scheme: dark) {
