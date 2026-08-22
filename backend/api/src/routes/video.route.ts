@@ -5,12 +5,14 @@ import { uploadVideo } from "../controller/video.controller";
 
 const router = Router();
 
+
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => {
         cb(null, path.resolve("storage/uploads"));
     },
 
     filename: (_req, file, cb) => {
+        console.log("bb")
         const filename = `${Date.now()}-${file.originalname}`;
         cb(null, filename);
     }

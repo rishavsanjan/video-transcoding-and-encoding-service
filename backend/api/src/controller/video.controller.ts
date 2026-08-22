@@ -14,6 +14,7 @@ export async function uploadVideo(req: Request, res: Response) {
         }
         const inputPath = req.file.path;
 
+        console.log(req.body)
         const video = await prisma.video.create({
             data: {
                 originalName: req.file.originalname,
@@ -60,7 +61,7 @@ export async function uploadVideo(req: Request, res: Response) {
 
     } catch (error) {
         console.log(error)
-
+        console.log("i m not here")
         return res.status(500).json({
             message: "failed to upload video."
         })

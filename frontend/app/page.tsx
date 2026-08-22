@@ -1,28 +1,17 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
+import axios from "axios";
 import { CloudUpload, Info, Play } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 type Resolution = "4K UHD" | "1080p" | "720p";
 type Codec = "H.264" | "H.265 (HEVC)" | "AV1";
 
-interface SourceMetadata {
-  filename: string;
-  resolution: string;
-  framerate: string;
-  bitrate: string;
-}
-
 const RESOLUTIONS: Resolution[] = ["4K UHD", "1080p", "720p"];
 const CODECS: Codec[] = ["H.264", "H.265 (HEVC)", "AV1"];
 
 
-const SOURCE_METADATA: SourceMetadata = {
-  filename: "raw_footage_camA.mov",
-  resolution: "3840 x 2160",
-  framerate: "59.94 fps",
-  bitrate: "150 Mbps",
-};
 
 const CODEC_EFFICIENCY: Record<Codec, number> = {
   "H.264": 1,
@@ -39,6 +28,7 @@ const RESOLUTION_WEIGHT: Record<Resolution, number> = {
 const BASE_SIZE_GB = 8.6;
 
 interface metData {
+  video: File | null
   filename: string,
   height: number,
   width: number,
@@ -55,7 +45,8 @@ export default function VCodecEncode() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [metData, setMetData] = useState<metData>({
-    filename:"",
+    video: null,
+    filename: "",
     height: 0,
     width: 0,
     duration: 0,
@@ -91,12 +82,13 @@ export default function VCodecEncode() {
       // const avgBitRate = file size × 8 / duration
       const size = (Number((files[0].size / (1024 * 1024)).toFixed(2)));
       video.onloadedmetadata = () => {
-        
+
         setMetData({
-          filename:files[0].name,
+          video: files[0],
+          filename: files[0].name,
           width: video.videoWidth,
           height: video.videoHeight,
-          duration: video.duration,
+          duration: Number(video.duration.toFixed(1)),
           size: size,
           avgBitrate: Number((size * 8 / video.duration).toFixed(2))
         })
@@ -140,6 +132,33 @@ export default function VCodecEncode() {
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }, []);
+
+  const handleVideoUploadMutation = useMutation({
+    mutationKey: ["upload-video"],
+
+    mutationFn: async () => {
+      if (!metData?.video) {
+        throw new Error("No video selected");
+      }
+
+      const formData = new FormData();
+
+      formData.append("video", metData.video);
+
+      formData.append(
+        "metadata",
+        JSON.stringify(metData)
+      );
+
+      await axios.post(
+        "http://localhost:5000/api/videos",
+        formData
+      );
+
+    },
+  });
+
+
 
   console.log(metData)
 
@@ -303,9 +322,10 @@ export default function VCodecEncode() {
                 <div className="space-y-3">
                   {[
                     ["Filename", fileName ?? metData.filename],
-                    ["Resolution", metData.width , metData.height],
+                    ["Resolution", (String(metData.width) + " x " + String(metData.height))],
                     ["Size", ((metData.size) + " MB")],
-                    ["Average Bitrate", metData.avgBitrate],
+                    ["Average Bitrate", ((metData.avgBitrate)) + " Mbps"],
+                    ["Duration", ((metData.duration)) + " seconds"],
                   ].map(([label, value], i) => (
                     <div key={label}>
                       {i > 0 && <div className="w-full h-px bg-outline-variant my-1" />}
@@ -341,7 +361,9 @@ export default function VCodecEncode() {
 
                 <button
                   type="button"
-                  className="mt-auto w-full bg-primary-container text-on-primary-container font-headline-sm text-headline-sm rounded py-3 hover:bg-primary transition-colors flex items-center justify-center gap-2"
+                  className="mt-auto w-full bg-primary-container text-on-primary-container font-headline-sm text-headline-sm rounded py-3 hover:bg-primary transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-primary cursor-pointer"
+                  disabled={metData.filename.length === 0 || handleVideoUploadMutation.isPending}
+                  onClick={() => { handleVideoUploadMutation.mutate() }}
                 >
                   <span
                     className="material-symbols-outlined"
