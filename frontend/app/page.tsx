@@ -1,9 +1,11 @@
 "use client";
 
+import EncodingProgress from "@/components/EncodingProcessBar";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { CloudUpload, Info, Play } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+
 
 type Resolution = "4K UHD" | "1080p" | "720p";
 type Codec = "H.264" | "H.265 (HEVC)" | "AV1";
@@ -24,6 +26,8 @@ const RESOLUTION_WEIGHT: Record<Resolution, number> = {
   "1080p": 0.42,
   "720p": 0.22,
 };
+
+
 
 const BASE_SIZE_GB = 8.6;
 
@@ -52,8 +56,10 @@ export default function VCodecEncode() {
     duration: 0,
     avgBitrate: 0,
     size: 0
-
   });
+
+  const [videoId, setVideoId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const crfPercent = (crf / 51) * 100;
@@ -150,11 +156,13 @@ export default function VCodecEncode() {
         JSON.stringify(metData)
       );
 
-      await axios.post(
+      const res = await axios.post(
         "http://localhost:5000/api/videos",
         formData
       );
 
+      setVideoId(res.data.videoId)
+      console.log(res.data)
     },
   });
 
@@ -373,8 +381,17 @@ export default function VCodecEncode() {
                   </span>
                   Start Conversion
                 </button>
+
+
               </section>
             </div>
+            {
+              (handleVideoUploadMutation.isSuccess && videoId != null) &&
+              <div>
+                <EncodingProgress videoId={videoId} />
+              </div>
+            }
+
           </div>
         </main>
       </div>

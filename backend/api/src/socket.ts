@@ -10,6 +10,7 @@ export function setupSocket(server: httpServer) {
             origin: '*'
         }
     });
+    startRedisSubscriber();
 
     io.on("connection", (socket) => {
         console.log("Socket connected:", socket.id);
@@ -28,11 +29,11 @@ export function setupSocket(server: httpServer) {
                 `Socket ${socket.id} joined video:${videoId}`
             );
 
-            socket.emit("encoding-progress", {
-                videoId,
-                resolution: 720,
-                progress: 50,
-            });
+            // socket.emit("encoding-progress", {
+            //     videoId,
+            //     resolution: 720,
+            //     progress: 50,
+            // });
         });
 
         socket.on("disconnect", () => {
@@ -59,6 +60,7 @@ async function startRedisSubscriber() {
     redisSubscriber.on(
         "pmessage",
         (_pattern, channel, message) => {
+            console.log("sending progress")
             const data = JSON.parse(message);
 
             const parts = channel.split(":");

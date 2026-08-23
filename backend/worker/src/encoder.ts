@@ -1,11 +1,12 @@
 import { spawn } from "child_process";
+import { redisPublisher } from "./redisPublisher";
 
 export function encodeVideo(
     inputPath: string,
     outputPath: string,
     height: number,
     duration: number,
-    onProgress: (progress: number) => void
+    onProgress: (progress: number, status: 'PROCESSING' | 'COMPLETED' | 'QUEUED' | 'FAILED') => void
 ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         const ffmpeg = spawn("ffmpeg", [
@@ -55,16 +56,20 @@ export function encodeVideo(
                     Math.round((currentTime / duration) * 100)
                 );
 
-                onProgress(progress);
+                onProgress(progress, 'PROCESSING');
             }
         });
+
+
 
         ffmpeg.on("close", (code) => {
             if (code == 0) {
                 console.log(`${height}p encoding completed`);
+                onProgress(100, 'COMPLETED');
                 resolve();
             } else {
                 reject(new Error(`FFmpeg exited with code ${code}`));
+                onProgress(0, 'FAILED');
             }
         })
 

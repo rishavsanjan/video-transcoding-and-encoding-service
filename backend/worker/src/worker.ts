@@ -38,7 +38,7 @@ const worker = new Worker("encode-video", async (job) => {
 
         let lastProgress = -1;
 
-        const onProgress = async (progress: number) => {
+        const onProgress = async (progress: number, status:'PROCESSING' | 'COMPLETED' | 'QUEUED' | 'FAILED') => {
             if (progress <= lastProgress) {
                 return;
             }
@@ -52,7 +52,7 @@ const worker = new Worker("encode-video", async (job) => {
                         videoId,
                         resolution: height,
                         progress,
-                        status: "PROCESSING",
+                        status: status,
                     })
                 );
             } catch (error) {
@@ -62,6 +62,7 @@ const worker = new Worker("encode-video", async (job) => {
                 );
             }
         };
+
         const duration = await getVideoDuration(inputPath);
         await encodeVideo(inputPath, outputPath, height, duration, onProgress);
 
