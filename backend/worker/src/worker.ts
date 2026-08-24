@@ -2,7 +2,7 @@ import { Worker } from "bullmq";
 import { encodeVideo } from "./encoder";
 import { redis } from "../../api/src/redis";
 import prisma from "../../api/src/prisma";
-import { getVideoDuration } from "./helper";
+import { getVideoMetadata } from "./helper";
 import { redisPublisher } from "./redisPublisher";
 
 
@@ -21,6 +21,7 @@ const worker = new Worker("encode-video", async (job) => {
         inputPath,
         outputPath,
         height,
+        duration
     } = job.data;
 
     console.log(`Processing ${height}p job: ${encodingJobId}`);
@@ -63,7 +64,6 @@ const worker = new Worker("encode-video", async (job) => {
             }
         };
 
-        const duration = await getVideoDuration(inputPath);
         await encodeVideo(inputPath, outputPath, height, duration, onProgress);
 
         await prisma.encodingJob.update({

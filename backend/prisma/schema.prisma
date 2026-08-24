@@ -8,9 +8,18 @@ datasource db {
 }
 
 model Video {
-  id           String        @id @default(uuid())
+  id           String @id @default(uuid())
   originalName String
   originalPath String
+
+  width    Int?
+  height   Int?
+  duration Float?
+  fps      Float?
+  bitrate  BigInt?
+  codec    String?
+  format   String?
+
   status       VideoStatus   @default(UPLOADED)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
