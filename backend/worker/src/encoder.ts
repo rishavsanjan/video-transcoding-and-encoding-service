@@ -2,8 +2,8 @@ import { spawn } from "child_process";
 import { redisPublisher } from "./redisPublisher";
 
 export function encodeVideo(
-    inputPath: string,
-    outputPath: string,
+    inputKey: string,
+    outputKey: string,
     height: number,
     duration: number,
     onProgress: (progress: number, status: 'PROCESSING' | 'COMPLETED' | 'QUEUED' | 'FAILED') => void
@@ -11,7 +11,7 @@ export function encodeVideo(
     return new Promise<void>((resolve, reject) => {
         const ffmpeg = spawn("ffmpeg", [
             "-i",
-            inputPath,
+            inputKey,
             "-vf",
             `scale=-2:${height}`,
             "-c:v",
@@ -23,7 +23,7 @@ export function encodeVideo(
             "pipe:1",
             "-nostats",
 
-            outputPath,
+            outputKey,
         ]);
 
 

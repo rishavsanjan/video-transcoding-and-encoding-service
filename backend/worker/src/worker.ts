@@ -1,9 +1,14 @@
+import os from "os";
+import path from "path";
+import fs from "fs/promises";
 import { Worker } from "bullmq";
 import { encodeVideo } from "./encoder";
 import { redis } from "../../api/src/redis";
 import prisma from "../../api/src/prisma";
 import { getVideoMetadata } from "./helper";
 import { redisPublisher } from "./redisPublisher";
+import { downloadFileFromS3 } from "../../shared/storage/download";
+import { uploadFileToS3 } from "../../shared/storage/upload";
 
 
 
@@ -18,8 +23,8 @@ const worker = new Worker("encode-video", async (job) => {
     const {
         encodingJobId,
         videoId,
-        inputPath,
-        outputPath,
+        inputKey,
+        outputKey,
         height,
         duration
     } = job.data;
@@ -39,7 +44,7 @@ const worker = new Worker("encode-video", async (job) => {
 
         let lastProgress = -1;
 
-        const onProgress = async (progress: number, status:'PROCESSING' | 'COMPLETED' | 'QUEUED' | 'FAILED') => {
+        const onProgress = async (progress: number, status: 'PROCESSING' | 'COMPLETED' | 'QUEUED' | 'FAILED') => {
             if (progress <= lastProgress) {
                 return;
             }
@@ -64,8 +69,38 @@ const worker = new Worker("encode-video", async (job) => {
             }
         };
 
-        await encodeVideo(inputPath, outputPath, height, duration, onProgress);
+        const tempDir = await fs.mkdtemp(
+            path.join(os.tmpdir(), "video-")
+        );
 
+        const inputPath = path.join(
+            tempDir,
+            "source.mp4"
+        );
+
+        const outputPath = path.join(
+            tempDir,
+            `${height}p.mp4`
+        );
+
+        await downloadFileFromS3(
+            inputKey,
+            inputPath
+        );
+
+        await encodeVideo(
+            inputPath,
+            outputPath,
+            height,
+            duration,
+            onProgress
+        );
+
+        await uploadFileToS3(
+            outputPath,
+            outputKey,
+            "video/mp4"
+        );
         await prisma.encodingJob.update({
             where: {
                 id: encodingJobId
@@ -75,6 +110,16 @@ const worker = new Worker("encode-video", async (job) => {
                 progress: 100
             }
         })
+
+        await redisPublisher.publish(
+            `video:${videoId}:progress`,
+            JSON.stringify({
+                videoId,
+                resolution: height,
+                progress: 100,
+                status: "COMPLETED",
+            })
+        );
 
         const remainingJobs = await prisma.encodingJob.count({
             where: {
@@ -97,13 +142,16 @@ const worker = new Worker("encode-video", async (job) => {
         }
 
         console.log(`${height}p encoding completed`);
+        await fs.rm(tempDir, {
+            recursive: true,
+            force: true,
+        });
     } catch (error) {
         console.error(`${height}p encoding failed`, error);
-
-
-
+        
         throw error;
-    }
+        
+    } 
 
 },
     {

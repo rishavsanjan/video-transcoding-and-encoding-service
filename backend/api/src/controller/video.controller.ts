@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { encodingQueue } from "../queues/encoding.queue";
 import prisma from "../prisma";
 import { getVideoMetadata } from "../../../worker/src/helper";
+import { uploadFileToS3 } from "../../../shared/storage/upload";
 
 
 export async function uploadVideo(req: Request, res: Response) {
@@ -18,7 +19,7 @@ export async function uploadVideo(req: Request, res: Response) {
         const video = await prisma.video.create({
             data: {
                 originalName: req.file.originalname,
-                originalPath: req.file.path,
+                originalKey: "",
                 width: metadata.width,
                 height: metadata.height,
                 duration: metadata.duration,
@@ -30,6 +31,21 @@ export async function uploadVideo(req: Request, res: Response) {
                 status: 'PROCESSING'
             }
         })
+
+        const originalKey = `videos/${video.id}/original/source.mp4`;
+        await uploadFileToS3(
+            req.file.path,
+            originalKey,
+            req.file.mimetype
+        );
+        await prisma.video.update({
+            where: {
+                id: video.id,
+            },
+            data: {
+                originalKey,
+            },
+        });
 
         const availableResolutions = [
             1080,
@@ -60,10 +76,19 @@ export async function uploadVideo(req: Request, res: Response) {
                 return encodingQueue.add("encode-video", {
                     encodingJobId: encodingJob.id,
                     videoId: video.id,
-                    inputPath,
-                    outputPath,
+                    inputKey: `videos/${video.id}/original/source.mp4`,
+                    outputKey: `videos/${video.id}/${encodingJob.resolution}p/output.mp4`,
                     height: encodingJob.resolution,
                     duration: metadata.duration
+                }, {
+                    attempts: 3,
+                    backoff: {
+                        type: "exponential",
+                        delay: 5000,
+                    },
+
+                    removeOnComplete: true,
+                    removeOnFail: false,
                 });
             })
         )
@@ -95,7 +120,7 @@ export async function getVideo(
 ) {
     try {
         const { videoId } = req.params as { videoId: string };
-        
+
         if (!videoId) {
             return res.status(404).json({
                 message: "Video Id not in params",
@@ -142,7 +167,7 @@ export async function getVideo(
                 resolution: job.resolution,
                 status: job.status,
                 progress: job.progress,
-                outputPath: job.outputPath,
+                outputPath: job.outputKey,
                 error: job.error,
             })),
 
