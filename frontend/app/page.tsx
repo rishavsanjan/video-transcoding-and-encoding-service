@@ -156,13 +156,36 @@ export default function VCodecEncode() {
         JSON.stringify(metData)
       );
 
-      const res = await axios.post(
-        "http://localhost:5000/api/videos",
-        formData
+      // const res = await axios.post(
+      //   "http://localhost:5000/api/videos",
+      //   formData
+      // );
+
+      const response = await axios({
+        url: "http://localhost:5000/api/videos/upload-url",
+
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        data: JSON.stringify({
+          fileName: metData.filename,
+          contentType: "video/mp4",
+        }),
+      }
       );
 
-      setVideoId(res.data.videoId)
-      console.log(res.data)
+      console.log(response.data)
+
+      const data = await response.data;
+      await fetch(data.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "video/mp4",
+        },
+        body: metData.video,
+      });
+      setVideoId(response.data.videoId)
     },
   });
 

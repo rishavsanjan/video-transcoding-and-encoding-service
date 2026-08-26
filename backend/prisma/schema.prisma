@@ -42,6 +42,7 @@ model EncodingJob {
 }
 
 enum VideoStatus {
+  UPLOADING
   UPLOADED
   PROCESSING
   COMPLETED

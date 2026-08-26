@@ -3,6 +3,7 @@ import { encodingQueue } from "../queues/encoding.queue";
 import prisma from "../prisma";
 import { getVideoMetadata } from "../../../worker/src/helper";
 import { uploadFileToS3 } from "../../../shared/storage/upload";
+import { createUploadUrlFromAWS } from "../../../shared/storage/presigned";
 
 
 export async function uploadVideo(req: Request, res: Response) {
@@ -179,6 +180,71 @@ export async function getVideo(
 
         return res.status(500).json({
             message: "Failed to fetch video",
+        });
+    }
+}
+
+export async function createUploadUrl(
+    req: Request,
+    res: Response
+) {
+    try {
+        const {
+            fileName,
+            contentType,
+        } = req.body;
+
+        if (!fileName || !contentType) {
+            return res.status(400).json({
+                message:
+                    "fileName and contentType are required",
+            });
+        }
+
+        if (!contentType.startsWith("video/")) {
+            return res.status(400).json({
+                message: "Only video files are allowed",
+            });
+        }
+
+        const video = await prisma.video.create({
+            data: {
+                originalName: fileName,
+                originalKey: "",
+                status: "UPLOADING",
+            },
+        });
+
+        const originalKey =
+            `videos/${video.id}/original/source.mp4`;
+
+        const uploadUrl =
+            await createUploadUrlFromAWS(
+                originalKey,
+                contentType
+            );
+
+        await prisma.video.update({
+            where: {
+                id: video.id,
+            },
+            data: {
+                originalKey,
+            },
+        });
+
+        return res.status(200).json({
+            videoId: video.id,
+            uploadKey: originalKey,
+            uploadUrl,
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message:
+                "Failed to create upload URL",
         });
     }
 }
