@@ -1,9 +1,19 @@
 import { Request, Response } from "express";
 import { encodingQueue } from "../queues/encoding.queue";
 import prisma from "../prisma";
-import { getVideoMetadata } from "../../../worker/src/helper";
+import { getVideoMetadata } from "../../../shared/media/ffprobe";
 import { uploadFileToS3 } from "../../../shared/storage/upload";
 import { createUploadUrlFromAWS } from "../../../shared/storage/presigned";
+import os from "os";
+import path from "path";
+import fs from "fs/promises";
+
+
+import {
+    downloadFileFromS3,
+} from "../../../shared/storage/download";
+
+
 
 
 export async function uploadVideo(req: Request, res: Response) {
@@ -246,5 +256,185 @@ export async function createUploadUrl(
             message:
                 "Failed to create upload URL",
         });
+    }
+}
+
+export async function processVideo(
+    req: Request,
+    res: Response
+) {
+    const { videoId } = req.params as { videoId: string };;
+
+    let tempDir: string | undefined;
+
+    try {
+        // 1. Find video
+        const video = await prisma.video.findUnique({
+            where: {
+                id: videoId,
+            },
+        });
+
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found",
+            });
+        }
+
+        // 2. Make sure it hasn't already been processed
+        if (
+            video.status !== "UPLOADING"
+        ) {
+            return res.status(409).json({
+                message:
+                    "Video is already being processed or has finished processing",
+            });
+        }
+
+        // 3. Verify object exists in S3
+        await getVideoMetadata(
+            video.originalKey
+        );
+
+        // 4. Temporary directory
+        tempDir = await fs.mkdtemp(
+            path.join(
+                os.tmpdir(),
+                "video-process-"
+            )
+        );
+
+        const inputPath = path.join(
+            tempDir,
+            "source.mp4"
+        );
+
+        // 5. Download source from S3
+        await downloadFileFromS3(
+            video.originalKey,
+            inputPath
+        );
+
+        // 6. FFprobe
+        const metadata =
+            await getVideoMetadata(inputPath);
+
+        // 7. Save metadata
+        await prisma.video.update({
+            where: {
+                id: videoId,
+            },
+            data: {
+                width: metadata.width,
+                height: metadata.height,
+                duration: metadata.duration,
+                fps: metadata.fps,
+                bitrate: BigInt(
+                    metadata.bitrate
+                ),
+                codec: metadata.codec,
+                format: metadata.format,
+                status: "PROCESSING",
+            },
+        });
+
+        // 8. Determine resolutions
+        const availableResolutions = [
+            1080,
+            720,
+            480,
+            360,
+        ];
+
+        const resolutions =
+            availableResolutions.filter(
+                (resolution) =>
+                    resolution <= metadata.height
+            );
+
+        // 9. Create encoding jobs
+        const encodingJobs =
+            await Promise.all(
+                resolutions.map(
+                    (resolution) =>
+                        prisma.encodingJob.create({
+                            data: {
+                                videoId,
+                                resolution,
+                                status: "QUEUED",
+                            },
+                        })
+                )
+            );
+
+        // 10. Add BullMQ jobs
+        await Promise.all(
+            encodingJobs.map(
+                (encodingJob) => {
+                    const outputKey =
+                        `videos/${videoId}/${encodingJob.resolution}p/output.mp4`;
+
+                    return encodingQueue.add(
+                        "encode-video",
+                        {
+                            encodingJobId:
+                                encodingJob.id,
+
+                            videoId,
+
+                            inputKey:
+                                video.originalKey,
+
+                            outputKey,
+
+                            height:
+                                encodingJob.resolution,
+
+                            duration:
+                                metadata.duration,
+                        },
+                        {
+                            attempts: 3,
+
+                            backoff: {
+                                type: "exponential",
+                                delay: 5000,
+                            },
+
+                            removeOnComplete: true,
+                            removeOnFail: false,
+                        }
+                    );
+                }
+            )
+        );
+
+        return res.status(202).json({
+            message:
+                "Video processing started",
+
+            videoId,
+
+            resolutions,
+        });
+
+    } catch (error) {
+        console.error(
+            "Video processing failed:",
+            error
+        );
+
+        return res.status(500).json({
+            message:
+                "Failed to process video",
+        });
+
+    } finally {
+        if (tempDir) {
+            await fs.rm(tempDir, {
+                recursive: true,
+                force: true,
+            });
+        }
     }
 }

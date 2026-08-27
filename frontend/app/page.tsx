@@ -185,6 +185,12 @@ export default function VCodecEncode() {
         },
         body: metData.video,
       });
+      await fetch(
+        `http://localhost:5000/api/videos/${data.videoId}/process`,
+        {
+          method: "POST",
+        }
+      );
       setVideoId(response.data.videoId)
     },
   });

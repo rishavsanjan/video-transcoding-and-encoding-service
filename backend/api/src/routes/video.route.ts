@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
-import { createUploadUrl, getVideo, uploadVideo } from "../controller/video.controller";
+import { createUploadUrl, getVideo, processVideo, uploadVideo } from "../controller/video.controller";
 
 const router = Router();
 
@@ -27,6 +27,10 @@ router.get("/videos/:id", getVideo)
 router.post(
     "/videos/upload-url",
     createUploadUrl
+);
+router.post(
+    "/videos/:videoId/process",
+    processVideo
 );
 
 export default router;
