@@ -9,6 +9,7 @@ import { getVideoMetadata } from "./helper";
 import { redisPublisher } from "./redisPublisher";
 import { downloadFileFromS3 } from "../../shared/storage/download";
 import { uploadFileToS3 } from "../../shared/storage/upload";
+import { encodeHLS } from "../../api/src/hlsEncoder";
 
 
 
@@ -83,6 +84,21 @@ const worker = new Worker("encode-video", async (job) => {
             `${height}p.mp4`
         );
 
+        const hlsDir = path.join(
+            tempDir,
+            `${height}p`
+        );
+
+        await fs.mkdir(hlsDir, {
+            recursive: true,
+        });
+
+        await encodeHLS(
+            inputPath,
+            hlsDir,
+            height
+        );
+
         await downloadFileFromS3(
             inputKey,
             inputPath
@@ -148,10 +164,10 @@ const worker = new Worker("encode-video", async (job) => {
         });
     } catch (error) {
         console.error(`${height}p encoding failed`, error);
-        
+
         throw error;
-        
-    } 
+
+    }
 
 },
     {

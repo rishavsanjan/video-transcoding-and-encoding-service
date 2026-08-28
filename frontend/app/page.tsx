@@ -147,51 +147,72 @@ export default function VCodecEncode() {
         throw new Error("No video selected");
       }
 
-      const formData = new FormData();
+      const video = metData.video;
 
-      formData.append("video", metData.video);
-
-      formData.append(
-        "metadata",
-        JSON.stringify(metData)
-      );
-
-      // const res = await axios.post(
-      //   "http://localhost:5000/api/videos",
-      //   formData
-      // );
-
-      const response = await axios({
-        url: "http://localhost:5000/api/videos/upload-url",
-
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        data: JSON.stringify({
-          fileName: metData.filename,
-          contentType: "video/mp4",
-        }),
-      }
-      );
-
-      console.log(response.data)
-
-      const data = await response.data;
-      await fetch(data.uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "video/mp4",
-        },
-        body: metData.video,
-      });
-      await fetch(
-        `http://localhost:5000/api/videos/${data.videoId}/process`,
+      const { data } = await axios.post(
+        "http://localhost:5000/api/videos/upload-url",
         {
-          method: "POST",
+          fileName: metData.filename || video.name,
+          contentType: video.type || "video/mp4",
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
-      setVideoId(response.data.videoId)
+
+      console.log("Upload URL response:", data);
+
+      const { uploadUrl, videoId } = data;
+
+      if (!uploadUrl || !videoId) {
+        throw new Error("Invalid upload URL response from server");
+      }
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": video.type || "video/mp4",
+        },
+        body: video,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          `Video upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`
+        );
+      }
+
+      console.log("Video uploaded successfully");
+
+      const processResponse = await axios.post(
+        `http://localhost:5000/api/videos/${videoId}/process`
+      );
+
+      console.log("Processing response:", processResponse.data);
+
+      setVideoId(videoId);
+
+      return {
+        videoId,
+        uploadResponse,
+        processData: processResponse.data,
+      };
+    },
+
+    onSuccess: (data) => {
+      console.log("Upload + processing started:", data);
+    },
+
+    onError: (error) => {
+      if (axios.isAxiosError(error)) {
+        console.error("Status:", error.response?.status);
+        console.error("Response:", error.response?.data);
+        console.error("Headers:", error.response?.headers);
+      } else {
+        console.error("Video upload failed:", error);
+      }
     },
   });
 
