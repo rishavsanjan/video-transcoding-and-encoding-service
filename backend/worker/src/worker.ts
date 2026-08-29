@@ -10,6 +10,7 @@ import { redisPublisher } from "./redisPublisher";
 import { downloadFileFromS3 } from "../../shared/storage/download";
 import { uploadFileToS3 } from "../../shared/storage/upload";
 import { encodeHLS } from "../../api/src/hlsEncoder";
+import { uploadDirectoryToS3 } from "../../shared/storage/directory";
 
 
 
@@ -79,9 +80,11 @@ const worker = new Worker("encode-video", async (job) => {
             "source.mp4"
         );
 
-        const outputPath = path.join(
-            tempDir,
-            `${height}p.mp4`
+
+
+        await downloadFileFromS3(
+            inputKey,
+            inputPath
         );
 
         const hlsDir = path.join(
@@ -99,23 +102,15 @@ const worker = new Worker("encode-video", async (job) => {
             height
         );
 
-        await downloadFileFromS3(
-            inputKey,
-            inputPath
-        );
+        console.log("HLS encoding finished");
 
-        await encodeVideo(
-            inputPath,
-            outputPath,
-            height,
-            duration,
-            onProgress
-        );
+        const files = await fs.readdir(hlsDir);
 
-        await uploadFileToS3(
-            outputPath,
-            outputKey,
-            "video/mp4"
+        console.log("Generated files:", files);
+
+        await uploadDirectoryToS3(
+            hlsDir,
+            `videos/${videoId}/hls/${height}p`
         );
         await prisma.encodingJob.update({
             where: {

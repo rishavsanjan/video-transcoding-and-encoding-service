@@ -292,9 +292,9 @@ export async function processVideo(
         }
 
         // 3. Verify object exists in S3
-        await getVideoMetadata(
-            video.originalKey
-        );
+        // await getVideoMetadata(
+        //     video.originalKey
+        // );
 
         // 4. Temporary directory
         tempDir = await fs.mkdtemp(
@@ -419,14 +419,14 @@ export async function processVideo(
         });
 
     } catch (error) {
-        console.error(
-            "Video processing failed:",
-            error
-        );
+        console.error("Video processing failed:", error);
 
         return res.status(500).json({
-            message:
-                "Failed to process video",
+            message: "Failed to process video",
+            error:
+                error instanceof Error
+                    ? error.message
+                    : String(error),
         });
 
     } finally {
