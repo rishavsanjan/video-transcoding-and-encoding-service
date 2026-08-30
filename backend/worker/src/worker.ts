@@ -11,6 +11,9 @@ import { downloadFileFromS3 } from "../../shared/storage/download";
 import { uploadFileToS3 } from "../../shared/storage/upload";
 import { encodeHLS } from "../../api/src/hlsEncoder";
 import { uploadDirectoryToS3 } from "../../shared/storage/directory";
+import { s3 } from "../../shared/storage/s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { createMasterPlaylist } from "../../shared/media/masterPlaylist";
 
 
 
@@ -142,14 +145,93 @@ const worker = new Worker("encode-video", async (job) => {
         })
 
         if (remainingJobs === 0) {
+
+            const resolutions =
+                await prisma.encodingJob.findMany({
+                    where: {
+                        videoId,
+                        status: "COMPLETED",
+                    },
+                    orderBy: {
+                        resolution: "desc",
+                    },
+                });
+
+            const video =
+                await prisma.video.findUnique({
+                    where: {
+                        id: videoId,
+                    },
+                });
+
+            if (!video) {
+                throw new Error(
+                    "Video not found"
+                );
+            }
+
+            const videoWidth = video.width!;
+            const videoHeight = video.height!;
+
+            const bandwidths: Record<number, number> = {
+                1080: 5000000,
+                720: 3000000,
+                480: 1500000,
+                360: 800000,
+            };
+
+            const variants = resolutions.map(
+                (job) => {
+
+                    const width = Math.round(
+                        (videoWidth / videoHeight) *
+                        job.resolution
+                    );
+
+                    return {
+                        height: job.resolution,
+                        width,
+                        bandwidth:
+                            bandwidths[
+                            job.resolution
+                            ] ?? 1000000,
+                    };
+                }
+            );
+
+            const masterPlaylist =
+                createMasterPlaylist(variants);
+
+            await s3.send(
+                new PutObjectCommand({
+                    Bucket:
+                        process.env.S3_BUCKET_NAME,
+
+                    Key:
+                        `videos/${videoId}/hls/master.m3u8`,
+
+                    Body: masterPlaylist,
+
+                    ContentType:
+                        "application/vnd.apple.mpegurl",
+                })
+            );
+            const masterKey =
+                `videos/${videoId}/hls/master.m3u8`;
+                
             await prisma.video.update({
                 where: {
-                    id: videoId
+                    id: videoId,
                 },
                 data: {
-                    status: 'COMPLETED'
-                }
-            })
+                    status: "COMPLETED",
+                    hlsMasterKey: masterKey,
+                },
+            });
+
+            console.log(
+                "Master playlist uploaded"
+            );
         }
 
         console.log(`${height}p encoding completed`);

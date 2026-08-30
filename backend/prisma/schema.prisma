@@ -12,13 +12,14 @@ model Video {
   originalName String
   originalKey  String
 
-  width    Int?
-  height   Int?
-  duration Float?
-  fps      Float?
-  bitrate  BigInt?
-  codec    String?
-  format   String?
+  width        Int?
+  height       Int?
+  duration     Float?
+  fps          Float?
+  bitrate      BigInt?
+  codec        String?
+  format       String?
+  hlsMasterKey String?
 
   status       VideoStatus   @default(UPLOADED)
   createdAt    DateTime      @default(now())
